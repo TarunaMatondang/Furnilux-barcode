@@ -64,7 +64,7 @@ export default function CabangPage() {
   }
 
   async function hapus(id: string) {
-    if (!confirm('Hapus cabang ini? Stok terkait akan kehilangan referensi cabang.')) return
+    if (!confirm('Hapus ya cabang ini? Stok terkait akan kehilangan referensi cabang.')) return
     const { error } = await supabase.from('cabang').delete().eq('id', id)
     if (error) { addToast('error', error.message); return }
     addToast('success', 'Cabang dihapus')
