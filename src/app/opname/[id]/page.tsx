@@ -75,7 +75,7 @@ export default function OpnameSesiPage({ params }: { params: Promise<{ id: strin
     setScanLog(data ?? [])
 
     // Build progress from coli scans
-    const coliScans = (data ?? []).filter((s) => s.tipe === 'coli')
+    const coliScans = (data ?? []).filter((s: OpnameScan) => s.tipe === 'coli')
     const map: Record<string, ColiProgress> = {}
     for (const scan of coliScans) {
       if (!scan.produk || !scan.produk_coli) continue
@@ -87,7 +87,7 @@ export default function OpnameSesiPage({ params }: { params: Promise<{ id: strin
         map[pid].scannedColi.push(scan.produk_coli)
       }
     }
-    Object.values(map).forEach((p) => { p.isComplete = p.scannedColi.length >= p.totalColi })
+    Object.values(map).forEach((p: ColiProgress) => { p.isComplete = p.scannedColi.length >= p.totalColi })
     setProgressMap(map)
   }
 
@@ -171,11 +171,13 @@ export default function OpnameSesiPage({ params }: { params: Promise<{ id: strin
 
     if (!scansForProduk) return
 
-    const sameColi = varianId ? scansForProduk.filter((s) => s.varian_id === varianId) : scansForProduk.filter((s) => !s.varian_id)
-    const uniqueTypes = new Set(sameColi.map((s) => s.produk_coli_id).filter(Boolean))
+    const sameColi = varianId 
+      ? scansForProduk.filter((s: any) => s.varian_id === varianId) 
+      : scansForProduk.filter((s: any) => !s.varian_id)
+    const uniqueTypes = new Set(sameColi.map((s: any) => s.produk_coli_id).filter(Boolean))
     if (uniqueTypes.size < totalColi) return
 
-    const coliIds = sameColi.filter((s) => s.referensi_id).map((s) => s.referensi_id)
+    const coliIds = sameColi.filter((s: any) => s.referensi_id).map((s: any) => s.referensi_id)
     const { data: coliRecords } = await supabase.from('stok_coli').select('id, status, produk_coli_id').in('id', coliIds).eq('status', 'tersedia')
     if (!coliRecords || coliRecords.length < totalColi) return
 
@@ -183,7 +185,7 @@ export default function OpnameSesiPage({ params }: { params: Promise<{ id: strin
     const selected: string[] = []
     for (const scan of sameColi) {
       if (scan.produk_coli_id && !usedTypes.has(scan.produk_coli_id) && scan.referensi_id) {
-        const rec = coliRecords.find((c) => c.id === scan.referensi_id)
+        const rec = coliRecords.find((c: any) => c.id === scan.referensi_id)
         if (rec && rec.status === 'tersedia') {
           usedTypes.add(scan.produk_coli_id)
           selected.push(scan.referensi_id)
@@ -227,7 +229,7 @@ export default function OpnameSesiPage({ params }: { params: Promise<{ id: strin
       groupedLogs.push({ ...scan, childColi: [] })
     } else if (scan.tipe === 'coli') {
       const totalRequired = (scan.produk as any)?.total_coli || 1
-      const parent = groupedLogs.find(p => p.tipe === 'pasang' && p.produk_id === scan.produk_id && p.varian_id === scan.varian_id && p.childColi.length < totalRequired)
+      const parent = groupedLogs.find((p: any) => p.tipe === 'pasang' && p.produk_id === scan.produk_id && p.varian_id === scan.varian_id && p.childColi.length < totalRequired)
       if (parent) parent.childColi.push(scan)
       else groupedLogs.push(scan) // standalone coli
     } else {
@@ -236,7 +238,7 @@ export default function OpnameSesiPage({ params }: { params: Promise<{ id: strin
   }
 
   const produkEntries  = Object.entries(progressMap)
-  const completedCount = produkEntries.filter(([, p]) => p.isComplete).length
+  const completedCount = produkEntries.filter(([, p]: [string, any]) => p.isComplete).length
   const cab = (sesi as any)?.cabang
 
   return (

@@ -38,23 +38,38 @@ export default function CetakColiPage() {
   useEffect(() => {
     const today = new Date()
     setBatch(`${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`)
-    supabase.from('produk').select('*, kategori_produk(nama)').order('nama_produk').then(({ data }) => setProdukList(data ?? []))
-    supabase.from('cabang').select('*').eq('aktif', true).order('nama_cabang').then(({ data }) => setCabangList(data ?? []))
+    
+    async function initData() {
+      const { data: produk } = await supabase.from('produk').select('*, kategori_produk(nama)').order('nama_produk')
+      setProdukList(produk ?? [])
+      
+      const { data: cabang } = await supabase.from('cabang').select('*').eq('aktif', true).order('nama_cabang')
+      setCabangList(cabang ?? [])
+    }
+    
+    initData()
   }, [])
 
   useEffect(() => {
-    setColiList([])
-    setVarianList([])
-    setSelectedColi('all')
-    setSelectedVarian('')
-    setPrintItems([])
-    setSaved(false)
-    if (selectedProduk) {
-      supabase.from('produk_coli').select('*').eq('produk_id', selectedProduk).order('nomor_coli')
-        .then(({ data }) => setColiList(data ?? []))
-      supabase.from('produk_varian').select('*').eq('produk_id', selectedProduk).eq('aktif', true)
-        .then(({ data }) => setVarianList(data ?? []))
+    async function fetchSubData() {
+      setColiList([])
+      setVarianList([])
+      setSelectedColi('all')
+      setSelectedVarian('')
+      setPrintItems([])
+      setSaved(false)
+      
+      if (selectedProduk) {
+        const [{ data: coli }, { data: varian }] = await Promise.all([
+          supabase.from('produk_coli').select('*').eq('produk_id', selectedProduk).order('nomor_coli'),
+          supabase.from('produk_varian').select('*').eq('produk_id', selectedProduk).eq('aktif', true)
+        ])
+        
+        setColiList(coli ?? [])
+        setVarianList(varian ?? [])
+      }
     }
+    fetchSubData()
   }, [selectedProduk])
 
   async function generateBarcodes() {

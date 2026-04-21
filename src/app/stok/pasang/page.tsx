@@ -32,9 +32,17 @@ export default function StokPasangPage() {
   const handlePrint = useReactToPrint({ contentRef: printRef })
 
   useEffect(() => {
-    supabase.from('produk').select('id, kode_produk, nama_produk').order('nama_produk').then(({ data }) => setProdukList(data ?? []))
-    supabase.from('cabang').select('*').eq('aktif', true).order('nama_cabang').then(({ data }) => setCabangList(data ?? []))
-    fetchItems()
+    async function initData() {
+      const [{ data: produk }, { data: cabang }] = await Promise.all([
+        supabase.from('produk').select('id, kode_produk, nama_produk').order('nama_produk'),
+        supabase.from('cabang').select('*').eq('aktif', true).order('nama_cabang')
+      ])
+      
+      setProdukList(produk ?? [])
+      setCabangList(cabang ?? [])
+      fetchItems()
+    }
+    initData()
   }, [])
 
   useEffect(() => { fetchItems() }, [filterProduk, filterCabang, filterStatus])

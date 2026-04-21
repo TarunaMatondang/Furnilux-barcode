@@ -19,26 +19,30 @@ export default function CetakUnitPage() {
   const handlePrint = useReactToPrint({ contentRef: printRef })
 
   useEffect(() => {
-    supabase.from('produk').select('*').order('nama_produk').then(({ data }) => {
+    async function fetchProduk() {
+      const { data } = await supabase.from('produk').select('*').order('nama_produk')
       setProdukList(data ?? [])
-    })
+    }
+    fetchProduk()
   }, [])
 
   useEffect(() => {
-    if (selectedProduk) {
-      supabase
-        .from('stok_pasang')
-        .select('*, produk(nama_produk, kode_produk)')
-        .eq('produk_id', selectedProduk)
-        .eq('status', 'tersedia')
-        .order('created_at', { ascending: false })
-        .then(({ data }) => {
-          setPasangList(data ?? [])
-          setSelectedPasang([])
-        })
-    } else {
-      setPasangList([])
+    async function fetchPasang() {
+      if (selectedProduk) {
+        const { data } = await supabase
+          .from('stok_pasang')
+          .select('*, produk(nama_produk, kode_produk)')
+          .eq('produk_id', selectedProduk)
+          .eq('status', 'tersedia')
+          .order('created_at', { ascending: false })
+        
+        setPasangList(data ?? [])
+        setSelectedPasang([])
+      } else {
+        setPasangList([])
+      }
     }
+    fetchPasang()
   }, [selectedProduk])
 
   function toggleSelect(id: string) {

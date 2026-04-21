@@ -39,7 +39,7 @@ export default function OpnamePage() {
 
     if (data && data.length > 0) {
       const counts: Record<string, number> = {}
-      await Promise.all(data.map(async (s) => {
+      await Promise.all(data.map(async (s: any) => {
         const { count } = await supabase
           .from('opname_scan').select('*', { count: 'exact', head: true }).eq('sesi_id', s.id)
         counts[s.id] = count ?? 0

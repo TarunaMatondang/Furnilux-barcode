@@ -18,7 +18,11 @@ export default function StokPage() {
   const [loading, setLoading]       = useState(true)
 
   useEffect(() => {
-    supabase.from('cabang').select('*').eq('aktif', true).order('nama_cabang').then(({ data }) => setCabangList(data ?? []))
+    async function fetchCabang() {
+      const { data } = await supabase.from('cabang').select('*').eq('aktif', true).order('nama_cabang')
+      setCabangList(data ?? [])
+    }
+    fetchCabang()
   }, [])
 
   useEffect(() => {
@@ -61,14 +65,14 @@ export default function StokPage() {
     const countColi = cols?.reduce((acc: any, curr: any) => { acc[curr.produk_id] = (acc[curr.produk_id] || 0) + 1; return acc }, {}) || {}
     const countUnit = unts?.reduce((acc: any, curr: any) => { acc[curr.produk_id] = (acc[curr.produk_id] || 0) + 1; return acc }, {}) || {}
 
-    const list = (pData || []).map(p => ({
+    const list = (pData || []).map((p: any) => ({
       ...p,
       qtyColi: countColi[p.id] || 0,
       qtyUnit: countUnit[p.id] || 0
     }))
     
     // sorting array, maybe put products that have stock first
-    list.sort((a,b) => (b.qtyColi + b.qtyUnit) - (a.qtyColi + a.qtyUnit))
+    list.sort((a: any, b: any) => (b.qtyColi + b.qtyUnit) - (a.qtyColi + a.qtyUnit))
     setProdukList(list)
     setLoading(false)
   }
