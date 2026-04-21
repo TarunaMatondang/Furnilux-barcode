@@ -58,21 +58,34 @@ export default function StokPage() {
     // Fetch Produk & Aggregate Stok Counts
     const { data: pData } = await supabase.from('produk').select('id, kode_produk, nama_produk, kategori_produk(nama)').order('nama_produk')
     
-    // We fetch just the produk_ids of available stocks to count them per-product efficiently.
-    const { data: cols } = await addFilter(supabase.from('stok_coli').select('produk_id').eq('status', 'tersedia'))
-    const { data: unts } = await addFilter(supabase.from('stok_unit').select('produk_id').eq('status', 'tersedia'))
+    // We fetch all records related to this product type to count statuses
+    const { data: cols } = await addFilter(supabase.from('stok_coli').select('produk_id, status'))
+    const { data: unts } = await addFilter(supabase.from('stok_unit').select('produk_id, status'))
     
-    const countColi = cols?.reduce((acc: any, curr: any) => { acc[curr.produk_id] = (acc[curr.produk_id] || 0) + 1; return acc }, {}) || {}
-    const countUnit = unts?.reduce((acc: any, curr: any) => { acc[curr.produk_id] = (acc[curr.produk_id] || 0) + 1; return acc }, {}) || {}
+    const countColi: Record<string, any> = {}
+    cols?.forEach((c: any) => {
+      if (!countColi[c.produk_id]) countColi[c.produk_id] = { tersedia: 0, keluar: 0, total: 0 }
+      countColi[c.produk_id].total++
+      if (c.status === 'tersedia') countColi[c.produk_id].tersedia++
+      if (c.status === 'keluar') countColi[c.produk_id].keluar++
+    })
+
+    const countUnit: Record<string, any> = {}
+    unts?.forEach((u: any) => {
+      if (!countUnit[u.produk_id]) countUnit[u.produk_id] = { tersedia: 0, keluar: 0, total: 0 }
+      countUnit[u.produk_id].total++
+      if (u.status === 'tersedia') countUnit[u.produk_id].tersedia++
+      if (u.status === 'keluar') countUnit[u.produk_id].keluar++
+    })
 
     const list = (pData || []).map((p: any) => ({
       ...p,
-      qtyColi: countColi[p.id] || 0,
-      qtyUnit: countUnit[p.id] || 0
+      coli: countColi[p.id] || { tersedia: 0, keluar: 0, total: 0 },
+      unit: countUnit[p.id] || { tersedia: 0, keluar: 0, total: 0 }
     }))
     
-    // sorting array, maybe put products that have stock first
-    list.sort((a: any, b: any) => (b.qtyColi + b.qtyUnit) - (a.qtyColi + a.qtyUnit))
+    // sorting array: products with most available stock first
+    list.sort((a: any, b: any) => (b.coli.tersedia + b.unit.tersedia) - (a.coli.tersedia + a.unit.tersedia))
     setProdukList(list)
     setLoading(false)
   }
@@ -167,7 +180,7 @@ export default function StokPage() {
         <div className="card">
           <div className="card-header">
             <div className="card-title">
-              <Package size={16} /> Data Aktual Produk <span style={{ color: 'var(--text-muted)', fontSize: '12px', fontWeight: 'normal' }}>(Status Tersedia Saja)</span>
+              <Package size={16} /> Data Aktual Produk <span style={{ color: 'var(--text-muted)', fontSize: '12px', fontWeight: 'normal' }}>(Status Keseluruhan)</span>
             </div>
             <Link href="/produk" className="btn btn-ghost btn-sm">Kelola Produk <ChevronRight size={14} /></Link>
           </div>
@@ -180,7 +193,13 @@ export default function StokPage() {
             <div className="table-wrapper">
               <table className="table">
                 <thead>
-                  <tr><th>Kode</th><th>Nama Produk</th><th>Kategori</th><th>Coli (Tersedia)</th><th>Unit (Tersedia)</th></tr>
+                  <tr>
+                    <th>Kode</th>
+                    <th>Nama Produk</th>
+                    <th>Kategori</th>
+                    <th>Stok Coli (Tersedia / Keluar / Total)</th>
+                    <th>Stok Unit (Tersedia / Keluar / Total)</th>
+                  </tr>
                 </thead>
                 <tbody>
                   {produkList.map((p) => (
@@ -192,13 +211,25 @@ export default function StokPage() {
                       </td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                           <span style={{ fontWeight: 700, fontSize: '16px', color: p.qtyColi > 0 ? 'var(--cyan)' : 'var(--text-muted)' }}>{p.qtyColi} pcs</span>
+                           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                             <div style={{ display: 'flex', gap: 6, alignItems: 'baseline' }}>
+                               <span style={{ fontWeight: 700, fontSize: '16px', color: p.coli.tersedia > 0 ? 'var(--cyan)' : 'var(--text-muted)' }}>{p.coli.tersedia}</span>
+                               <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>/ {p.coli.keluar} / {p.coli.total}</span>
+                             </div>
+                             <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Tersedia / Keluar / Total</div>
+                           </div>
                            <Link href={`/stok/coli?produk=${p.id}${selectedCabang ? `&cabang=${selectedCabang}` : ''}`} className="btn-ghost" style={{ fontSize:'11px', padding:'2px 6px', borderRadius:4 }}>Lihat →</Link>
                         </div>
                       </td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                           <span style={{ fontWeight: 700, fontSize: '16px', color: p.qtyUnit > 0 ? 'var(--green)' : 'var(--text-muted)' }}>{p.qtyUnit} set</span>
+                           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                             <div style={{ display: 'flex', gap: 6, alignItems: 'baseline' }}>
+                               <span style={{ fontWeight: 700, fontSize: '16px', color: p.unit.tersedia > 0 ? 'var(--green)' : 'var(--text-muted)' }}>{p.unit.tersedia}</span>
+                               <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>/ {p.unit.keluar} / {p.unit.total}</span>
+                             </div>
+                             <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Tersedia / Keluar / Total</div>
+                           </div>
                            <Link href={`/stok/unit?produk=${p.id}${selectedCabang ? `&cabang=${selectedCabang}` : ''}`} className="btn-ghost" style={{ fontSize:'11px', padding:'2px 6px', borderRadius:4 }}>Lihat →</Link>
                         </div>
                       </td>

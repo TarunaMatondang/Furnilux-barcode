@@ -180,4 +180,44 @@ SELECT id, 1, 'Daun Meja' FROM produk WHERE kode_produk = 'MM-001'
 UNION ALL
 SELECT id, 2, '4 Kursi' FROM produk WHERE kode_produk = 'MM-001'
 UNION ALL
-SELECT id, 3, 'Kaki Meja' FROM produk WHERE kode_produk = 'MM-001';
+-- ============================================
+-- DATABASE VIEWS
+-- ============================================
+
+-- View Stok Aktual per Cabang, per Produk, per Varian
+CREATE OR REPLACE VIEW v_stok_aktual AS
+WITH coli_stats AS (
+  SELECT 
+    produk_id, varian_id, cabang_id,
+    COUNT(*) FILTER (WHERE status = 'tersedia') as tersedia,
+    COUNT(*) FILTER (WHERE status = 'keluar') as keluar,
+    COUNT(*) as total
+  FROM stok_coli
+  GROUP BY 1, 2, 3
+),
+unit_stats AS (
+  SELECT 
+    produk_id, varian_id, cabang_id,
+    COUNT(*) FILTER (WHERE status = 'tersedia') as tersedia,
+    COUNT(*) FILTER (WHERE status = 'keluar') as keluar,
+    COUNT(*) as total
+  FROM stok_unit
+  GROUP BY 1, 2, 3
+)
+SELECT 
+  p.id as produk_id, p.kode_produk, p.nama_produk,
+  c.id as cabang_id, c.nama_cabang,
+  v.id as varian_id, COALESCE(v.nama_varian, 'Default') as nama_varian,
+  -- Coli Stats
+  COALESCE(cs.tersedia, 0) as coli_tersedia,
+  COALESCE(cs.keluar, 0) as coli_keluar,
+  COALESCE(cs.total, 0) as coli_total,
+  -- Unit Stats
+  COALESCE(us.tersedia, 0) as unit_tersedia,
+  COALESCE(us.keluar, 0) as unit_keluar,
+  COALESCE(us.total, 0) as unit_total
+FROM produk p
+CROSS JOIN cabang c
+LEFT JOIN produk_varian v ON v.produk_id = p.id
+LEFT JOIN coli_stats cs ON cs.produk_id = p.id AND cs.cabang_id = c.id AND (cs.varian_id = v.id OR (cs.varian_id IS NULL AND v.id IS NULL))
+LEFT JOIN unit_stats us ON us.produk_id = p.id AND us.cabang_id = c.id AND (us.varian_id = v.id OR (us.varian_id IS NULL AND v.id IS NULL));
